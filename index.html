@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mundo Mágico 🧸 | Pelúcias & Estoque</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI','Comic Sans MS',cursive,sans-serif}
+  :root{
+    --rosa:#FF69B4;--rosa-claro:#FFB6C1;--azul:#87CEEB;--azul-claro:#E0F7FF;
+    --amarelo:#FFD700;--lilas:#DDA0DD;--verde:#98FB98;--branco:#FFF;
+    --cinza:#F5F5F5;--sombra:0 6px 20px rgba(0,0,0,.1);--borda:20px;
+  }
+  body{background:linear-gradient(135deg,var(--azul-claro),var(--rosa-claro),var(--lilas));min-height:100vh;padding:15px;color:#333}
+  header{background:linear-gradient(90deg,var(--rosa),var(--lilas),var(--azul));padding:20px 25px;border-radius:var(--borda);box-shadow:var(--sombra);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:25px;border:4px solid var(--branco)}
+  .logo{display:flex;align-items:center;gap:12px}
+  .logo h1{font-size:2rem;color:var(--branco);text-shadow:3px 3px 0 var(--rosa),5px 5px 0 rgba(0,0,0,.15)}
+  .logo span{font-size:2.5rem;animation:bal 2s infinite ease-in-out}
+  @keyframes bal{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+  .carrinho-btn{background:var(--amarelo);border:3px solid var(--branco);padding:12px 22px;border-radius:50px;font-size:1.1rem;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #ccac00;display:flex;align-items:center;gap:8px;transition:.2s}
+  .carrinho-btn:hover{transform:translateY(-3px);box-shadow:0 7px 0 #ccac00}
+  .tabs{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+  .tab-btn{padding:12px 28px;border:none;border-radius:50px;font-size:1.1rem;font-weight:700;cursor:pointer;background:var(--branco);color:#555;box-shadow:0 4px 0 rgba(0,0,0,.15);transition:.2s}
+  .tab-btn.ativo{background:var(--rosa);color:var(--branco);transform:scale(1.05)}
+  .grid-pelucia{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px;margin-bottom:30px}
+  .card-pelucia{background:var(--branco);border-radius:var(--borda);padding:18px;box-shadow:var(--sombra);border:4px solid var(--branco);display:flex;flex-direction:column;position:relative;overflow:hidden;transition:.3s}
+  .card-pelucia:hover{transform:translateY(-8px) scale(1.02);border-color:var(--amarelo)}
+  .emoji-pelucia{font-size:5rem;text-align:center;margin:10px 0;filter:drop-shadow(4px 6px 4px rgba(0,0,0,.15))}
+  .card-pelucia h3{font-size:1.3rem;text-align:center;color:#444;margin-bottom:4px}
+  .descricao{font-size:.85rem;text-align:center;color:#777;margin-bottom:10px;min-height:34px}
+  .preco{font-size:1.5rem;font-weight:700;text-align:center;color:var(--rosa);margin:6px 0}
+  .estoque-tag{position:absolute;top:12px;right:-30px;background:var(--verde);color:#2e7d32;padding:4px 40px;transform:rotate(45deg);font-size:.75rem;font-weight:700}
+  .estoque-tag.esgotado{background:#ff8a80;color:#b71c1c}
+  .card-pelucia button{margin-top:auto;padding:12px;border:none;border-radius:50px;background:linear-gradient(135deg,var(--azul),var(--lilas));color:var(--branco);font-size:1rem;font-weight:700;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.15);transition:.2s}
+  .card-pelucia button:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 7px 0 rgba(0,0,0,.15)}
+  .card-pelucia button:disabled{background:#ddd;color:#999;cursor:not-allowed;box-shadow:none}
+  .carrinho-painel{position:fixed;top:0;right:-420px;width:400px;max-width:92vw;height:100vh;background:var(--branco);box-shadow:-8px 0 30px rgba(0,0,0,.25);transition:right .4s;z-index:1000;display:flex;flex-direction:column;border-radius:20px 0 0 20px}
+  .carrinho-painel.aberto{right:0}
+  .carrinho-header{background:linear-gradient(90deg,var(--rosa),var(--lilas));color:var(--branco);padding:18px 20px;border-radius:20px 0 0 0;display:flex;justify-content:space-between;align-items:center;font-size:1.2rem;font-weight:700}
+  .carrinho-header button{background:none;border:none;color:var(--branco);font-size:1.8rem;cursor:pointer}
+  .carrinho-itens{flex:1;overflow-y:auto;padding:15px}
+  .carrinho-item{display:flex;align-items:center;gap:12px;background:var(--cinza);border-radius:15px;padding:12px;margin-bottom:12px}
+  .carrinho-item .emoji{font-size:2.2rem}
+  .carrinho-item .info{flex:1}
+  .carrinho-item .info h4{font-size:.95rem;color:#444}
+  .carrinho-item .info .preco-item{color:var(--rosa);font-weight:700;font-size:.9rem}
+  .carrinho-item .controles{display:flex;align-items:center;gap:6px}
+  .carrinho-item .controles button{width:30px;height:30px;border:none;border-radius:50%;background:var(--azul);color:var(--branco);font-size:1.1rem;font-weight:700;cursor:pointer}
+  .carrinho-item .controles span{font-weight:700;min-width:20px;text-align:center}
+  .carrinho-footer{padding:18px 20px;border-top:3px dashed var(--rosa-claro);background:var(--azul-claro);border-radius:0 0 0 20px}
+  .carrinho-footer .total{font-size:1.4rem;font-weight:700;color:var(--rosa);text-align:center;margin-bottom:12px}
+  .btn-finalizar{width:100%;padding:14px;border:none;border-radius:50px;background:linear-gradient(90deg,#25D366,#128C7E);color:var(--branco);font-size:1.15rem;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #0b6b5e;transition:.2s}
+  .btn-finalizar:hover:not(:disabled){transform:translateY(-3px);box-shadow:0 7px 0 #0b6b5e}
+  .btn-finalizar:disabled{background:#ccc;box-shadow:none;cursor:not-allowed}
+  .estoque-tabela{width:100%;border-collapse:separate;border-spacing:0 8px}
+  .estoque-tabela th{background:var(--lilas);color:var(--branco);padding:12px 10px;font-size:.9rem;text-align:left}
+  .estoque-tabela th:first-child{border-radius:12px 0 0 0}
+  .estoque-tabela th:last-child{border-radius:0 12px 0 0}
+  .estoque-tabela td{background:var(--branco);padding:10px;font-size:.9rem;vertical-align:middle}
+  .estoque-tabela tr td:first-child{border-radius:12px 0 0 12px}
+  .estoque-tabela tr td:last-child{border-radius:0 12px 12px 0}
+  .estoque-tabela input{width:80px;padding:8px;border:2px solid var(--azul-claro);border-radius:10px;font-size:1rem;text-align:center;font-weight:700}
+  .btn-add-produto{padding:14px 28px;border:none;border-radius:50px;background:var(--verde);color:#1b5e20;font-size:1.05rem;font-weight:700;cursor:pointer;box-shadow:0 4px 0 #5cb860;margin-bottom:20px}
+  .btn-remover{background:#ff8a80;border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;font-size:1.1rem;color:#b71c1c;font-weight:700}
+  .btn-remover:hover{background:#ff5252;color:#fff}
+  .status-salvo{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--verde);color:#1b5e20;padding:14px 30px;border-radius:50px;font-weight:700;box-shadow:var(--sombra);transition:.4s;z-index:2000;opacity:0}
+  .status-salvo.mostrar{transform:translateX(-50%) translateY(0);opacity:1}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;opacity:0;pointer-events:none;transition:.3s}
+  .overlay.ativo{opacity:1;pointer-events:all}
+  .secao{display:none}.secao.ativa{display:block}
+  .aviso{background:#fff3cd;color:#856404;padding:12px 18px;border-radius:12px;margin-bottom:15px;font-size:.9rem;border:2px solid #ffeeba}
+  @media(max-width:600px){
+    .logo h1{font-size:1.3rem}.grid-pelucia{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+    .emoji-pelucia{font-size:3.5rem}.card-pelucia h3{font-size:1rem}.preco{font-size:1.2rem}
+    .estoque-tabela input{width:55px;padding:5px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span>🧸</span><h1>Mundo Mágico</h1></div>
+  <button class="carrinho-btn" onclick="toggleCarrinho()">🛒 Carrinho <span id="badge-carrinho">0</span></button>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn ativo" id="tab-loja" onclick="mudarTab('loja')">🛍️ Loja</button>
+  <button class="tab-btn" id="tab-estoque" onclick="mudarTab('estoque')">📦 Controle de Estoque</button>
+</div>
+
+<section id="secao-loja" class="secao ativa">
+  <div id="aviso-config"></div>
+  <div class="grid-pelucia" id="grid-pelucia"></div>
+</section>
+
+<section id="secao-estoque" class="secao">
+  <button class="btn-add-produto" onclick="adicionarProduto()">➕ Adicionar Pelúcia</button>
+  <table class="estoque-tabela">
+    <thead><tr><th>Emoji</th><th>Nome</th><th>Preço (R$)</th><th>Estoque</th><th>Ações</th></tr></thead>
+    <tbody id="corpo-estoque"></tbody>
+  </table>
+</section>
+
+<div class="overlay" id="overlay" onclick="toggleCarrinho()"></div>
+<div class="carrinho-painel" id="carrinho-painel">
+  <div class="carrinho-header">🛒 Meu Carrinho <button onclick="toggleCarrinho()">×</button></div>
+  <div class="carrinho-itens" id="carrinho-itens"><p style="text-align:center;color:#999;padding:40px 0">Seu carrinho está vazio 🧸</p></div>
+  <div class="carrinho-footer">
+    <div class="total" id="carrinho-total">Total: R$ 0,00</div>
+    <button class="btn-finalizar" id="btn-finalizar" onclick="finalizarPedido()" disabled>✅ Finalizar Pedido no WhatsApp</button>
+  </div>
+</div>
+
+<div class="status-salvo" id="status-salvo">✅ Estoque atualizado!</div>
+
+<script>
+/* ============================================================
+   1) CONFIGURAÇÃO SUPABASE — SUBSTITUA OS DOIS VALORES ABAIXO
+   ============================================================ */
+const SUPABASE_URL = 'https://ogznyfubijaexajoyhzh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_WAmdwwl4sxt0ldcp45Z26Q_mfFro1_T';
+
+/* Número do WhatsApp para receber os pedidos (DDD + número) */
+const WHATSAPP_NUMERO = '5581994101207';
+
+/* ============================================================
+   2) CLIENTE SUPABASE
+   ============================================================ */
+let supabaseClient = null;
+let supabaseConfigurado = false;
+try {
+  if (SUPABASE_URL.includes('supabase.co') && !SUPABASE_URL.includes('SEU_PROJETO')
+      && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'SUA_ANON_KEY_AQUI') {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseConfigurado = true;
+  }
+} catch (e) { console.warn('Supabase não configurado:', e); }
+
+/* ============================================================
+   3) ESTADO
+   ============================================================ */
+let pelucias = [];
+let carrinho = [];
+
+/* Produtos padrão (usados como fallback local) */
+const PRODUTOS_PADRAO = [
+  { nome:'Ursinho Carinhoso', emoji:'🧸', preco:49.90, estoque:15, descricao:'Macio e abraçável!' },
+  { nome:'Coelhinho Saltitante', emoji:'🐰', preco:39.90, estoque:20, descricao:'Orelhas macias' },
+  { nome:'Panda Sonolento', emoji:'🐼', preco:59.90, estoque:8, descricao:'Perfeito para dormir' },
+  { nome:'Gatinho Fofo', emoji:'🐱', preco:44.90, estoque:12, descricao:'Ronrona de verdade!' },
+  { nome:'Cachorrinho Amigo', emoji:'🐶', preco:54.90, estoque:6, descricao:'Companheiro fiel' },
+  { nome:'Unicórnio Mágico', emoji:'🦄', preco:69.90, estoque:10, descricao:'Puro brilho!' },
+  { nome:'Polvo Colorido', emoji:'🐙', preco:47.90, estoque:9, descricao:'8 abraços de uma vez' },
+  { nome:'Leãozinho Corajoso', emoji:'🦁', preco:64.90, estoque:5, descricao:'Rei da selva fofa' },
+  { nome:'Sapo Saltador', emoji:'🐸', preco:34.90, estoque:18, descricao:'Pula de alegria' },
+  { nome:'Pinguim Geladinho', emoji:'🐧', preco:52.90, estoque:7, descricao:'Fofura polar' }
+];
+
+/* ============================================================
+   4) INICIALIZAÇÃO
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', iniciar);
+
+async function iniciar() {
+  if (!supabaseConfigurado) {
+    document.getElementById('aviso-config').innerHTML =
+      '<div class="aviso">⚠️ Supabase ainda não configurado. Os produtos exibidos são apenas um exemplo e as alterações NÃO serão salvas. Configure a URL e a ANON KEY no código para ativar o banco de dados.</div>';
+    carregarFallbackLocal();
+    return;
+  }
+  await carregarPelucias();
+}
+
+function carregarFallbackLocal() {
+  pelucias = PRODUTOS_PADRAO.map((p, i) => ({ ...p, id: i + 1 }));
+  renderizarLoja();
+  renderizarEstoque();
+  atualizarCarrinhoUI();
+}
+
+/* ============================================================
+   5) SUPABASE — LEITURA
+   ============================================================ */
+async function carregarPelucias() {
+  try {
+    const { data, error } = await supabaseClient
+      .from('pelucias')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      pelucias = data;
+    } else {
+      // Tabela vazia → insere padrão
+      const { data: inseridos, error: errIns } = await supabaseClient
+        .from('pelucias')
+        .insert(PRODUTOS_PADRAO)
+        .select();
+      if (errIns) throw errIns;
+      pelucias = inseridos || [];
+    }
+  } catch (e) {
+    console.error('Erro ao carregar do Supabase:', e);
+    document.getElementById('aviso-config').innerHTML =
+      '<div class="aviso">⚠️ Não foi possível conectar ao Supabase. Verifique a URL, a chave e se a tabela <code>pelucias</code> existe. Exibindo dados locais.</div>';
+    pelucias = PRODUTOS_PADRAO.map((p, i) => ({ ...p, id: i + 1 }));
+  }
+  renderizarLoja();
+  renderizarEstoque();
+  atualizarCarrinhoUI();
+}
+
+/* ============================================================
+   6) RENDERIZAÇÃO
+   ============================================================ */
+function renderizarLoja() {
+  const grid = document.getElementById('grid-pelucia');
+  grid.innerHTML = '';
+  if (pelucias.length === 0) {
+    grid.innerHTML = '<p style="text-align:center;grid-column:1/-1;color:#777;padding:30px">Nenhuma pelúcia cadastrada ainda.</p>';
+    return;
+  }
+  pelucias.forEach(p => {
+    const esgotado = Number(p.estoque) <= 0;
+    const card = document.createElement('div');
+    card.className = 'card-pelucia';
+    card.innerHTML = `
+      <div class="estoque-tag ${esgotado ? 'esgotado' : ''}">${esgotado ? 'Esgotado' : 'Estoque: ' + p.estoque}</div>
+      <div class="emoji-pelucia">${p.emoji || '🧸'}</div>
+      <h3>${p.nome}</h3>
+      <div class="descricao">${p.descricao || 'Pelúcia fofa e macia'}</div>
+      <div class="preco">R$ ${Number(p.preco).toFixed(2).replace('.', ',')}</div>
+      <button ${esgotado ? 'disabled' : ''} onclick="adicionarAoCarrinho(${p.id})">
+        ${esgotado ? '😢 Esgotado' : '🛒 Adicionar'}
+      </button>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderizarEstoque() {
+  const corpo = document.getElementById('corpo-estoque');
+  corpo.innerHTML = '';
+  if (pelucias.length === 0) {
+    corpo.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#777;padding:20px">Nenhum produto cadastrado.</td></tr>';
+    return;
+  }
+  pelucias.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-size:1.6rem;text-align:center">${p.emoji || '🧸'}</td>
+      <td>${p.nome}</td>
+      <td><input type="number" step="0.01" min="0" value="${Number(p.preco).toFixed(2)}"
+                 onchange="atualizarPreco(${p.id}, this.value)"></td>
+      <td><input type="number" min="0" value="${p.estoque}"
+                 onchange="atualizarEstoque(${p.id}, this.value)"></td>
+      <td><button class="btn-remover" onclick="removerProduto(${p.id})" title="Remover">✕</button></td>
+    `;
+    corpo.appendChild(tr);
+  });
+}
+
+/* ============================================================
+   7) AÇÕES DO ESTOQUE
+   ============================================================ */
+async function atualizarEstoque(id, novoEstoque) {
+  const qtd = parseInt(novoEstoque, 10);
+  if (isNaN(qtd) || qtd < 0) { renderizarEstoque(); return; }
+
+  const produto = pelucias.find(p => p.id === id);
+  if (produto) produto.estoque = qtd;
+
+  if (supabaseConfigurado) {
+    try {
+      const { error } = await supabaseClient.from('pelucias').update({ estoque: qtd }).eq('id', id);
+      if (error) throw error;
+    } catch (e) { console.error(e); }
+  }
+  renderizarLoja();
+  mostrarToast('✅ Estoque atualizado!');
+}
+
+async function atualizarPreco(id, novoPreco) {
+  const preco = parseFloat(novoPreco);
+  if (isNaN(preco) || preco < 0) { renderizarEstoque(); return; }
+
+  const produto = pelucias.find(p => p.id === id);
+  if (produto) produto.preco = preco;
+
+  if (supabaseConfigurado) {
+    try {
+      const { error } = await supabaseClient.from('pelucias').update({ preco }).eq('id', id);
+      if (error) throw error;
+    } catch (e) { console.error(e); }
+  }
+  renderizarLoja();
+  mostrarToast('✅ Preço atualizado!');
+}
+
+async function removerProduto(id) {
+  if (!confirm('Remover esta pelúcia do estoque?')) return;
+
+  if (supabaseConfigurado) {
+    try {
+      const { error } = await supabaseClient.from('pelucias').delete().eq('id', id);
+      if (error) throw error;
+    } catch (e) { console.error(e); }
+  }
+  pelucias = pelucias.filter(p => p.id !== id);
+  carrinho = carrinho.filter(c => c.id !== id);
+  renderizarLoja(); renderizarEstoque(); atualizarCarrinhoUI();
+  mostrarToast('🗑️ Produto removido!');
+}
+
+async function adicionarProduto() {
+  const nome = prompt('Nome da pelúcia:');
+  if (!nome) return;
+  const emoji = prompt('Emoji da pelúcia (ex: 🧸):', '🧸') || '🧸';
+  const preco = parseFloat(prompt('Preço (R$):', '49.90'));
+  if (isNaN(preco)) { alert('Preço inválido.'); return; }
+  const estoque = parseInt(prompt('Quantidade em estoque:', '10'), 10);
+  if (isNaN(estoque)) { alert('Estoque inválido.'); return; }
+  const descricao = prompt('Descrição curta:', 'Fofa e macia!') || 'Fofa e macia!';
+
+  const novo = { nome, emoji, preco, estoque, descricao };
+
+  if (supabaseConfigurado) {
+    try {
+      const { data, error } = await supabaseClient.from('pelucias').insert(novo).select();
+      if (error) throw error;
+      if (data && data[0]) pelucias.push(data[0]);
+    } catch (e) {
+      console.error(e);
+      novo.id = Date.now();
+      pelucias.push(novo);
+    }
+  } else {
+    novo.id = Date.now();
+    pelucias.push(novo);
+  }
+  renderizarLoja(); renderizarEstoque();
+  mostrarToast('🧸 Pelúcia adicionada!');
+}
+
+/* ============================================================
+   8) CARRINHO
+   ============================================================ */
+function adicionarAoCarrinho(id) {
+  const produto = pelucias.find(p => p.id === id);
+  if (!produto || Number(produto.estoque) <= 0) return;
+
+  const item = carrinho.find(c => c.id === id);
+  if (item) {
+    if (item.quantidade >= Number(produto.estoque)) {
+      alert('⚠️ Quantidade máxima em estoque atingida!');
+      return;
+    }
+    item.quantidade++;
+  } else {
+    carrinho.push({
+      id: produto.id, nome: produto.nome, preco: Number(produto.preco),
+      emoji: produto.emoji, quantidade: 1
+    });
+  }
+  atualizarCarrinhoUI();
+  mostrarToast(`🛒 ${produto.nome} adicionado!`);
+}
+
+function alterarQuantidade(id, delta) {
+  const item = carrinho.find(c => c.id === id);
+  if (!item) return;
+  const produto = pelucias.find(p => p.id === id);
+  const novaQtd = item.quantidade + delta;
+
+  if (novaQtd <= 0) {
+    carrinho = carrinho.filter(c => c.id !== id);
+  } else if (produto && novaQtd > Number(produto.estoque)) {
+    alert('⚠️ Quantidade máxima em estoque atingida!');
+    return;
+  } else {
+    item.quantidade = novaQtd;
+  }
+  atualizarCarrinhoUI();
+}
+
+function atualizarCarrinhoUI() {
+  const totalItens = carrinho.reduce((acc, c) => acc + c.quantidade, 0);
+  document.getElementById('badge-carrinho').textContent = totalItens;
+
+  const container = document.getElementById('carrinho-itens');
+  const totalEl = document.getElementById('carrinho-total');
+  const btn = document.getElementById('btn-finalizar');
+
+  if (carrinho.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:#999;padding:40px 0">Seu carrinho está vazio 🧸</p>';
+    totalEl.textContent = 'Total: R$ 0,00';
+    btn.disabled = true;
+    return;
+  }
+
+  container.innerHTML = '';
+  let total = 0;
+  carrinho.forEach(item => {
+    total += item.preco * item.quantidade;
+    const div = document.createElement('div');
+    div.className = 'carrinho-item';
+    div.innerHTML = `
+      <div class="emoji">${item.emoji}</div>
+      <div class="info">
+        <h4>${item.nome}</h4>
+        <div class="preco-item">R$ ${item.preco.toFixed(2).replace('.', ',')} un.</div>
+      </div>
+      <div class="controles">
+        <button onclick="alterarQuantidade(${item.id}, -1)">−</button>
+        <span>${item.quantidade}</span>
+        <button onclick="alterarQuantidade(${item.id}, 1)">+</button>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  totalEl.textContent = `Total: R$ ${total.toFixed(2).replace('.', ',')}`;
+  btn.disabled = false;
+}
+
+/* ============================================================
+   9) FINALIZAR PEDIDO → WHATSAPP
+   ============================================================ */
+async function finalizarPedido() {
+  if (carrinho.length === 0) return;
+
+  let total = 0;
+  let linhas = '';
+  carrinho.forEach(item => {
+    const subtotal = item.preco * item.quantidade;
+    total += subtotal;
+    linhas += `• ${item.emoji} ${item.nome} x${item.quantidade} — R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+  });
+
+  const mensagem =
+    `🧸 *NOVO PEDIDO — Mundo Mágico*\n\n` +
+    `Olá! Gostaria de fazer o seguinte pedido:\n\n` +
+    linhas +
+    `\n*TOTAL: R$ ${total.toFixed(2).replace('.', ',')}*\n\n` +
+    `Aguardo as instruções de pagamento e entrega. Obrigado(a)! 💕`;
+
+  // Baixa automática no estoque
+  for (const item of carrinho) {
+    const produto = pelucias.find(p => p.id === item.id);
+    if (!produto) continue;
+    const novoEstoque = Math.max(0, Number(produto.estoque) - item.quantidade);
+    produto.estoque = novoEstoque;
+
+    if (supabaseConfigurado) {
+      try {
+        await supabaseClient.from('pelucias').update({ estoque: novoEstoque }).eq('id', item.id);
+      } catch (e) { console.error('Erro ao baixar estoque:', e); }
+    }
+  }
+
+  // Abre WhatsApp
+  const url = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensagem)}`;
+  window.open(url, '_blank');
+
+  // Limpa carrinho
+  carrinho = [];
+  atualizarCarrinhoUI();
+  renderizarLoja();
+  renderizarEstoque();
+  toggleCarrinho();
+  mostrarToast('✅ Pedido enviado ao WhatsApp!');
+}
+
+/* ============================================================
+   10) UI
+   ============================================================ */
+function toggleCarrinho() {
+  document.getElementById('carrinho-painel').classList.toggle('aberto');
+  document.getElementById('overlay').classList.toggle('ativo');
+}
+
+function mudarTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
+  document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+  if (tab === 'loja') {
+    document.getElementById('tab-loja').classList.add('ativo');
+    document.getElementById('secao-loja').classList.add('ativa');
+  } else {
+    document.getElementById('tab-estoque').classList.add('ativo');
+    document.getElementById('secao-estoque').classList.add('ativa');
+  }
+}
+
+let toastTimer = null;
+function mostrarToast(msg) {
+  const el = document.getElementById('status-salvo');
+  el.textContent = msg;
+  el.classList.add('mostrar');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('mostrar'), 2200);
+}
+</script>
+</body>
+</html>
